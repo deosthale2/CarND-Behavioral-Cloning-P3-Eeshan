@@ -21,9 +21,10 @@ from sklearn.model_selection import train_test_split
 from copy_data import *
 
 def preprocess_image(images, measurements, to_flip = 0):
+	## Code to preprocess the images by flipping them
+
     X_train, y_train = images, measurements
     if to_flip == 1:
-#         idx = np.where(np.absolute(measurements)>0.1)[0]
         flip_measurements = -1.0*measurements
         flip_images = []
         for image in images:
@@ -33,6 +34,8 @@ def preprocess_image(images, measurements, to_flip = 0):
     return X_train, y_train
 
 def generator(samples, batch_size = 32, is_validation = 0, include_side = 0, to_flip = 0, sample_size = 2000):
+	## Generator definition for processing the training data in batches
+
     samples = random.sample(samples, k=sample_size) if is_validation == 0 else shuffle(samples)
     num_samples = sample_size
     while  True:
@@ -48,10 +51,10 @@ def generator(samples, batch_size = 32, is_validation = 0, include_side = 0, to_
                     left_images += [cv2.cvtColor(cv2.imread('./data/IMG/'+batch_sample[1].split('IMG/')[-1]), cv2.COLOR_BGR2RGB)]
                     right_images += [cv2.cvtColor(cv2.imread('./data/IMG/'+batch_sample[2].split('IMG/')[-1]), cv2.COLOR_BGR2RGB)]
             images = np.array(center_images)
-            measurements = np.array(center_measurements)*5.
+            measurements = np.array(center_measurements)*5. # Multiplying Steering angle by 5 to better manifest the MSE loss
             if include_side == 1:
                 images = np.concatenate((images, left_images, right_images), axis = 0)
-                measurements = np.concatenate((measurements, measurements + 0.2*5., measurements - 0.2*5.), axis = 0)
+                measurements = np.concatenate((measurements, measurements + 0.2*5., measurements - 0.2*5.), axis = 0) # Modifying Steering Angles for Left and Right Images
             if is_validation == 0:
                 X_train, y_train = preprocess_image(images, measurements, to_flip = to_flip)
             else:
@@ -59,8 +62,10 @@ def generator(samples, batch_size = 32, is_validation = 0, include_side = 0, to_
             yield shuffle(X_train, y_train)
 
 def model_nvidia(train_samples, validation_samples):
+	## Definition of NVIDIA End-to-End Learning Model
+
     batch_size = 32
-    sample_size = 3000
+    sample_size = 3000 ## No. of images to train per epoch
     train_generator = generator(train_samples, batch_size = batch_size, is_validation = 0, include_side = 1, to_flip = 1, sample_size = sample_size)
     validation_generator = generator(validation_samples, batch_size = batch_size, is_validation = 1, include_side = 0)
     
@@ -95,6 +100,7 @@ def model_nvidia(train_samples, validation_samples):
     model.save('model.h5')
     
 def make_uniform(samples):
+	## Code to normalize the image distribution w.r.t. Steering Angles
     no_bins = 25
     augmented_samples = []
     count_thresh = int(len(samples)/no_bins)*3
